@@ -7,4 +7,3 @@ istioctl replace -f mesh/map-v2-routing.yaml
 kubectl delete svc activitymap
 kubectl delete svc githubstats
 
-
