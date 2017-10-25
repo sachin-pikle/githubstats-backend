@@ -1,0 +1,16 @@
+apiVersion: config.istio.io/v1alpha2
+kind: RouteRule
+metadata:
+  name: githubstats-default
+  namespace: default
+spec:
+  ## Used by services inside the Kubernetes cluster
+  destination:
+    name: githubstats
+    namespace: default
+    domain: svc.cluster.local
+  precedence: 1
+  route:
+  - labels:
+      version: v3
+    weight: 100

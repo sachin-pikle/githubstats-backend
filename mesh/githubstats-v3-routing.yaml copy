@@ -1,0 +1,9 @@
+---
+type: route-rule
+name: githubstats-default
+spec:
+  destination: githubstats.default.svc.cluster.local
+  precedence: 1
+  route:
+  - tags:
+      version: v3
