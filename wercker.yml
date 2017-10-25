@@ -1,0 +1,108 @@
+box: combient/java-mvn
+
+build:
+  steps:
+    # Build Inventory REST application 
+    #- script:
+    #    name: Maven install
+    #    code: mvn install
+
+push:
+  steps:
+    # Push to public docker Container Registry (CR)
+    #- internal/docker-push:
+    #    tag: ${WERCKER_GIT_BRANCH}-$WERCKER_GIT_COMMIT
+    #    repository: $CR_REPOSITORY
+    #    cmd: java -jar  /pipeline/source/target/rest-inventory-mongodb-0.1.0.jar
+
+deploy-to-cluster:
+  steps:
+    # https://github.com/wercker/step-bash-template
+    # This Wercker step will look for files in our repo with a .template extension.
+    # It will expand any environment variables in those files, then remove the
+    # template extension.
+    - bash-template
+    
+    - script:
+        name: "Visualise Kubernetes config"
+    #   code: cat inventory.yaml
+
+    - kubectl:
+        server: $KUBERNETES_MASTER
+        token: $KUBERNETES_TOKEN
+        insecure-skip-tls-verify: true
+    #    command: apply -f inventory.yaml
+
+register:
+  steps:
+    # Register Inventory REST service in APIP
+    - shellcheck
+
+    #- script:
+      #name: Install kubectl
+      #code: |
+        #echo "Installing version $KUBERNETES_VERSION of kubernetes"
+        #curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+        #$chmod +x ./kubectl
+
+    #- script:
+      #name: "Wait for service LB to be provisioned and assigned an external IP"
+      #code: |
+        #CONTAINER_HOST=
+        #echo 'Before until loop ... Container host=' $CONTAINER_HOST
+        #while [[ -z "$CONTAINER_HOST" ]]; do
+          #CONTAINER_HOST=$(./kubectl --server=$KUBERNETES_MASTER --token=$KUBERNETES_TOKEN --insecure-skip-tls-verify=true get service rest-inventory -o jsonpath={.status.loadBalancer.ingress[0].ip})
+          #echo 'Sleeping for 20 sec .. Container host=' $CONTAINER_HOST
+          #sleep 20
+        #done
+         
+    - script:
+        name: Register Inventory REST service in APIP
+        code: |
+          #echo 'Container host=' $CONTAINER_HOST
+          #CONTAINER_PORT=8999
+          #echo 'Container host=' $CONTAINER_PORT
+          INVENTORY_CONTEXTPATH=$(egrep -o '"([^"]*)"' $WERCKER_SOURCE_DIR/src/main/java/io/CustomContainer.java | sed -r 's/"(.*)"/\1/')
+          echo 'Context path=' $INVENTORY_CONTEXTPATH
+          INVENTORY_URL=$CONTAINER_HOST$INVENTORY_CONTEXTPATH
+          echo 'Inventory URL=' $INVENTORY_URL
+          curl -v -X PUT \
+            $APIP_URL \
+            -H 'authorization: Basic Q29udGludW91c0ludGVncmF0aW9uOndlbGNvbWUx' \
+            -H 'cache-control: no-cache' \
+            -H 'content-type: application/json' \
+            -d '{
+            "description": "test service description",
+            "implementation": {
+                  "executions": {
+                      "request": [
+                          "1"
+                      ],
+                      "response": [
+                          "2"
+                      ]
+                  },
+                  "policies": [
+                      {
+                          "id": "1",
+                          "type": "o:BackendRequest",
+                          "version": "1.0",
+                          "config": {
+                              "endpoints": [
+                                  {
+                                      "serviceAccount": "109",
+                                      "useProxy": false,
+                                      "url": "http://'"$INVENTORY_URL"'"
+                                  }
+                              ]
+                          }
+                      },
+                      {
+                          "id": "2",
+                          "type": "o:BackendResponse",
+                          "version": "1.0",
+                          "config": {}
+                      }
+                  ]
+              }
+            }'
