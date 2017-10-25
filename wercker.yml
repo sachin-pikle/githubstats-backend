@@ -31,7 +31,7 @@ deploy-to-cluster:
         server: $KUBERNETES_MASTER
         token: $KUBERNETES_TOKEN
         insecure-skip-tls-verify: true
-    #    command: apply -f inventory.yaml
+        command: get po
 
 register:
   steps:
