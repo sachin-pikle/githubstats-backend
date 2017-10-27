@@ -1,9 +1,0 @@
----
-type: route-rule
-name: activitymap-default
-spec:
-  destination: activitymap.default.svc.cluster.local
-  precedence: 1
-  route:
-  - tags:
-      version: v2
